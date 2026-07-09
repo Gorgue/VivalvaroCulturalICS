@@ -1,0 +1,29 @@
+name: Actualizar Calendario ICS
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # Se ejecuta automáticamente cada día a las 03:00 AM
+  workflow_dispatch: # Te permite ejecutarlo manualmente desde la pestaña "Actions"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Ejecutar script generador
+        run: node generar.js
+
+      - name: Subir cambios al alojamiento estático
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add agenda.ics
+          git diff-index --quiet HEAD || git commit -m "Auto: Actualización de la agenda cultural"
+          git push
