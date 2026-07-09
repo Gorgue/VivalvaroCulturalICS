@@ -3,19 +3,19 @@ name: Actualizar Calendario ICS
 on:
   schedule:
     - cron: '0 3 * * *' # Se ejecuta automáticamente cada día a las 03:00 AM
-  workflow_dispatch: # Te permite ejecutarlo manualmente desde la pestaña "Actions"
+  workflow_dispatch: # Permite ejecución manual desde la pestaña "Actions"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Descargar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6 # Actualizado a v6 para soporte de Node 24
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6 # Actualizado a v6 para soporte de Node 24
         with:
-          node-version: 20
+          node-version: '24' # Versión de Node compatible con el entorno de ejecución actual
 
       - name: Ejecutar script generador
         run: node generar.js
