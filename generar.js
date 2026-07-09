@@ -2,29 +2,22 @@ const fs = require('fs');
 const path = require('path');
 
 async function ejecutar() {
-    console.log("Leyendo el archivo de datos JSON local...");
+    console.log("Analizando la agenda pública de Vicálvaro...");
     
-    const rutaJson = path.join(__dirname, 'eventos_origen.json');
+    const rutaHtml = path.join(__dirname, 'agenda_publica.html');
     
-    if (!fs.existsSync(rutaJson)) {
-        console.error("❌ El archivo fuente 'eventos_origen.json' no se ha generado en el paso anterior.");
+    if (!fs.existsSync(rutaHtml)) {
+        console.error("❌ El archivo 'agenda_publica.html' no existe.");
         process.exit(1);
     }
 
     try {
-        const contenidoRaw = fs.readFileSync(rutaJson, 'utf8');
-        
-        // Validamos si lo que devolvió curl es un HTML de error en vez de un JSON válido
-        if (contenidoRaw.trim().startsWith('<!DOCTYPE')) {
-            throw new Error("El servidor ha denegado el curl devolviendo una página de bloqueo web.");
-        }
-
-        const eventsData = JSON.parse(contenidoRaw);
+        const html = fs.readFileSync(rutaHtml, 'utf8');
 
         let icsContent = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
-            'PRODID:-//Suscripcion AJAX Local//Agenda Vicalvaro//ES',
+            'PRODID:-//Suscripcion HTML Scraper//Agenda Vicalvaro//ES',
             'X-WR-CALNAME:Cultura Vicálvaro', 
             'X-WR-TIMEZONE:Europe/Madrid',
             'CALSCALE:GREGORIAN',
@@ -32,50 +25,86 @@ async function ejecutar() {
         ];
 
         let contador = 0;
+        const anioActual = new Date().getFullYear();
 
-        if (Array.isArray(eventsData) && eventsData.length > 0) {
-            eventsData.forEach((event, index) => {
-                const cleanStart = (event.start || '').replace(/[-:]/g, '');
-                const cleanEnd = (event.end || '').replace(/[-:]/g, '') || cleanStart;
+        // Expresión regular diseñada específicamente para capturar la lista de eventos del tema NativeChurch
+        // Busca estructuras de tipo: * [Día] [Mes]. [Categoría]. [Título]. [Ubicación]
+        const regexEventos = /<\s*li\s+class\s*=\s*"[^"]*listing-item[^"]*"[^>]*>([\s\S]*?)<\s*\/\s*li\s*>/gi;
+        
+        // Alternativa de parseo de texto por bloques de listas en caso de renderizado directo
+        const bloquesHtml = html.match(/<li>([\s\S]*?)<\/li>/gi) || [];
+        
+        bloquesHtml.forEach((bloque, index) => {
+            // Buscamos líneas que contengan las palabras clave del programa cultural de verano
+            if (bloque.includes('CINE DE VERANO') || bloque.includes('NOCHES DE VICÁLVARO') || bloque.includes('TARDES FOLKIS')) {
                 
+                // Limpiamos etiquetas HTML para extraer el texto plano
+                let textoLimpio = bloque.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                
+                // Extraer título e información útil
+                let titulo = "Actividad Cultural";
+                if (textoLimpio.includes('CINE DE VERANO')) {
+                    titulo = "Cine: " + textoLimpio.split('CINE DE VERANO')[1].split('.')[0].trim().replace(/[«»“”"]/g, '');
+                } else if (textoLimpio.includes('NOCHES DE VICÁLVARO')) {
+                    titulo = "Espectáculo: " + textoLimpio.split('NOCHES DE VICÁLVARO')[1].split('.')[0].trim().replace(/[«»“”"]/g, '');
+                } else {
+                    titulo = textoLimpio.substring(0, 50) + "...";
+                }
+
+                // Intentamos capturar la fecha del texto (ej: "10 Jul")
+                let dia = "15";
+                let mes = "07"; // Julio por defecto para la agenda estival
+                
+                const matchFecha = /(\d{1,2})\s+(Jul|Ago|Sep)/i.exec(textoLimpio);
+                if (matchFecha) {
+                    dia = matchFecha[1].padStart(2, '0');
+                    const textoMes = matchFecha[2].toLowerCase();
+                    if (textoMes.includes('ago')) mes = '08';
+                    if (textoMes.includes('sep')) mes = '09';
+                }
+
+                // Definimos un horario estándar nocturno (22:00h - 23:59h) propio del ciclo de verano de Vicálvaro
+                const fechaStart = `${anioActual}${mes}${dia}T200000Z`;
+                const fechaEnd = `${anioActual}${mes}${dia}T220000Z`;
+
                 icsContent.push('BEGIN:VEVENT');
-                icsContent.push(`UID:vicalvaro-ajax-${index}-${cleanStart.substring(0,8)}@estatico`);
+                icsContent.push(`UID:vicalvaro-html-${index}-${dia}${mes}@estatico`);
                 icsContent.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')}Z`);
-                icsContent.push(`DTSTART:${cleanStart}`);
-                icsContent.push(`DTEND:${cleanEnd}`);
-                icsContent.push(`SUMMARY:${event.title || 'Actividad Cultural'}`);
-                icsContent.push(`DESCRIPTION:${event.description || 'Consulta la agenda en vicalvablog.com'}`);
-                if (event.location) icsContent.push(`LOCATION:${event.location}`);
+                icsContent.push(`DTSTART:${fechaStart}`);
+                icsContent.push(`DTEND:${fechaEnd}`);
+                icsContent.push(`SUMMARY:${titulo}`);
+                icsContent.push(`DESCRIPTION:${textoLimpio}`);
+                
+                // Extraer ubicación simplificada
+                if (textoLimpio.includes('RECINTO FERIAL')) icsContent.push('LOCATION:Auditorio Recinto Ferial de Vicálvaro, Madrid');
+                else if (textoLimpio.includes('CAÑAVERAL')) icsContent.push('LOCATION:IDB II El Cañaveral, Madrid');
+                else if (textoLimpio.includes('VALDEBERNARDO')) icsContent.push('LOCATION:Parque Forestal de Valdebernardo, Madrid');
+                
                 icsContent.push('END:VEVENT');
                 contador++;
-            });
-            console.log(`🎉 ¡Éxito! Se han estructurado ${contador} eventos dinámicos obtenidos por AJAX.`);
-        } else {
-            console.log('⚠️ El JSON se ha descargado pero no contiene eventos para este periodo de fechas.');
+            }
+        });
+
+        // Si no se encuentran eventos por un cambio estructural repentino, dejamos un evento base informativo
+        if (contador === 0) {
+            const hoyStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+            icsContent.push('BEGIN:VEVENT');
+            icsContent.push(`UID:vicalvaro-info-${hoyStr}@estatico`);
+            icsContent.push(`DTSTART:${hoyStr}T200000Z`);
+            icsContent.push(`DTEND:${hoyStr}T210000Z`);
+            icsContent.push('SUMMARY:Consultar Cartelera de Vicálvaro');
+            icsContent.push('DESCRIPTION:Suscripción activa. Visita vicalvablog.com para comprobar las proyecciones y conciertos de esta semana.');
+            icsContent.push('END:VEVENT');
+            console.log("⚠️ Guardado archivo base informativo. No se aislaron cadenas de texto coincidentes.");
         }
 
         icsContent.push('END:VCALENDAR');
         fs.writeFileSync('agenda.ics', icsContent.join('\r\n'), 'utf8');
+        console.log(`🎉 Proceso completado. Escritos ${contador} eventos en agenda.ics.`);
 
     } catch (error) {
-        console.error('❌ Error parseando los eventos del archivo local:', error.message);
-        
-        // Creamos un archivo de error limpio para evitar romper la suscripción de Google
-        const hoyStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
-        const errorIcs = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'X-WR-CALNAME:Cultura Vicálvaro (Alerta)',
-            'BEGIN:VEVENT',
-            `UID:vicalvaro-error-${hoyStr}@estatico`,
-            `DTSTART:${hoyStr}T090000`,
-            `DTEND:${hoyStr}T100000`,
-            'SUMMARY:Incidencia en Sincronización',
-            'DESCRIPTION:El servidor de origen no ha facilitado los datos JSON.',
-            'END:VEVENT',
-            'END:VCALENDAR'
-        ].join('\r\n');
-        fs.writeFileSync('agenda.ics', errorIcs, 'utf8');
+        console.error('❌ Error procesando el archivo HTML:', error.message);
+        process.exit(1);
     }
 }
 

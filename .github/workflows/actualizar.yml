@@ -2,8 +2,8 @@ name: Actualizar Calendario ICS
 
 on:
   schedule:
-    - cron: '0 3 * * *' # Todos los días a las 03:00 AM
-  workflow_dispatch: # Permite ejecución manual
+    - cron: '0 3 * * *' 
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -14,38 +14,20 @@ jobs:
       - name: Descargar repositorio
         uses: actions/checkout@v6 
 
-      - name: Descargar JSON de Eventos vía CURL (POST)
+      - name: Descargar HTML público del Calendario
         run: |
-          # Calculamos las fechas dinámicas directamente en la terminal de Linux
-          ANO_ACTUAL=$(date +%Y)
-          MES_ACTUAL=$(date +%m)
-          MES_SIGUIENTE=$(date -d "+1 month" +%m)
-          ANO_SIGUIENTE=$(date -d "+1 month" +%Y)
-          
-          START_PARAM="${ANO_ACTUAL}-${MES_ACTUAL}-01"
-          END_PARAM="${ANO_SIGUIENTE}-${MES_SIGUIENTE}-31"
-          MONTH_PARAM="${ANO_ACTUAL}-${MES_ACTUAL}"
-
-          echo "Petición AJAX hacia json-feed.php desde $START_PARAM hasta $END_PARAM"
-
-          curl "https://vicalvablog.com" \
-            -X POST \
-            -H "accept: application/json, text/javascript, */*; q=0.01" \
+          curl "https://vicalvablog.com/events-calendar/" \
+            -H "accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8" \
             -H "accept-language: es-ES,es;q=0.9" \
-            -H "content-type: application/x-www-form-urlencoded; charset=UTF-8" \
-            -H "origin: https://vicalvablog.com" \
-            -H "referer: https://vicalvablog.com/events-calendar/" \
-            -H "x-requested-with: XMLHttpRequest" \
             -H "user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-            --data-raw "event_cat_id=&month_event=${MONTH_PARAM}&start=${START_PARAM}&end=${END_PARAM}" \
-            -o eventos_origen.json --silent || echo "Error en la descarga"
+            -o agenda_publica.html --silent || echo "Error en la descarga"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v6 
         with:
           node-version: '24' 
 
-      - name: Convertir JSON local a formato ICS
+      - name: Extraer eventos y generar ICS
         run: node generar.js
 
       - name: Guardar y subir cambios al repositorio
@@ -53,5 +35,5 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add agenda.ics
-          git diff-index --quiet HEAD || git commit -m "Auto: Sincronización de eventos Vicálvaro"
+          git diff-index --quiet HEAD || git commit -m "Auto: Sincronización de eventos de Vicálvaro"
           git push
