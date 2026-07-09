@@ -1,28 +1,47 @@
 const fs = require('fs');
 
+// Función auxiliar para forzar una pausa en milisegundos
+const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchConReintentos(url, opciones, reintentosMaximos = 3, retrasoInicial = 3000) {
+    for (let intento = 1; intento <= reintentosMaximos; intento++) {
+        try {
+            // Creamos un controlador para definir nuestro propio límite de tiempo extendido
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 segundos de margen
+
+            const respuesta = await fetch(url, {
+                ...opciones,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            if (!respuesta.ok) throw new Error(`Código de estado HTTP: ${respuesta.status}`);
+            return await respuesta.json();
+
+        } catch (error) {
+            console.warn(`⚠️ Intento ${intento} fallido. Motivo: ${error.message}`);
+            if (intento === reintentosMaximos) throw error;
+            
+            const tiempoEspera = retrasoInicial * intento;
+            console.log(`Esperando ${tiempoEspera / 1000} segundos antes de reintentar...`);
+            await esperar(tiempoEspera);
+        }
+    }
+}
+
 async function ejecutar() {
-    // 1. Calcular de forma dinámica el mes actual y el siguiente
     const hoy = new Date();
-    
-    // Año y mes actual (Formato: YYYY-MM)
     const anioActual = hoy.getFullYear();
     const mesActualNum = String(hoy.getMonth() + 1).padStart(2, '0');
     const monthEventParam = `${anioActual}-${mesActualNum}`;
-
-    // Fecha de inicio: Primer día del mes actual (Formato: YYYY-MM-DD)
     const startParam = `${anioActual}-${mesActualNum}-01`;
 
-    // Fecha de fin: Último día del mes siguiente
-    // Al poner el mes + 2 y el día 0, JavaScript nos da el último día del mes siguiente
     const finMesSiguiente = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 0);
-    const anioSiguiente = finMesSiguiente.getFullYear();
-    const mesSiguienteNum = String(finMesSiguiente.getMonth() + 1).padStart(2, '0');
-    const diaSiguienteNum = String(finMesSiguiente.getDate()).padStart(2, '0');
-    const endParam = `${anioSiguiente}-${mesSiguienteNum}-${diaSiguienteNum}`;
+    const endParam = `${finMesSiguiente.getFullYear()}-${String(finMesSiguiente.getMonth() + 1).padStart(2, '0')}-${String(finMesSiguiente.getDate()).padStart(2, '0')}`;
 
-    console.log(`Generando agenda dinámica desde ${startParam} hasta ${endParam}...`);
+    console.log(`Iniciando descarga dinámica: ${startParam} hasta ${endParam}`);
 
-    // Parámetros POST dinámicos
     const dataRaw = new URLSearchParams({
         'event_cat_id': '',
         'month_event': monthEventParam,
@@ -31,7 +50,8 @@ async function ejecutar() {
     });
 
     try {
-        const response = await fetch('https://vicalvablog.com', {
+        // Lanzamos la petición usando el motor robusto de reintentos
+        const eventsData = await fetchConReintentos('https://vicalvablog.com', {
             method: 'POST',
             headers: {
                 'accept': 'application/json, text/javascript, */*; q=0.01',
@@ -39,13 +59,11 @@ async function ejecutar() {
                 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
                 'origin': 'https://vicalvablog.com',
                 'referer': 'https://vicalvablog.com',
-                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                // Modificamos el User-Agent para camuflar la petición como un navegador real actualizado
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
             body: dataRaw
         });
-
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
-        const eventsData = await response.json();
 
         let icsContent = [
             'BEGIN:VCALENDAR',
@@ -72,18 +90,17 @@ async function ejecutar() {
                 if (event.location) icsContent.push(`LOCATION:${event.location}`);
                 icsContent.push('END:VEVENT');
             });
-            console.log(`Se han procesado ${eventsData.length} eventos.`);
+            console.log(`🎉 ¡Éxito! Se procesaron ${eventsData.length} eventos culturales.`);
         } else {
-            console.log('No se encontraron eventos en el servidor para este rango de fechas.');
+            console.log('⚠️ Respuesta recibida vacía o sin estructura de eventos estándar.');
         }
 
         icsContent.push('END:VCALENDAR');
-        
         fs.writeFileSync('agenda.ics', icsContent.join('\r\n'), 'utf8');
-        console.log('¡Archivo agenda.ics guardado correctamente!');
+        console.log('Fichero agenda.ics actualizado en el repositorio local.');
 
     } catch (error) {
-        console.error('Error generando el calendario:', error);
+        console.error('❌ Error crítico insalvable tras los reintentos:', error.message);
         process.exit(1);
     }
 }
