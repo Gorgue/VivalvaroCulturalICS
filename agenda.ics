@@ -1,11 +1,15 @@
 BEGIN:VCALENDAR
 VERSION:2.0
-X-WR-CALNAME:Cultura Vicálvaro (Alerta)
+PRODID:-//Suscripcion HTML Scraper//Agenda Vicalvaro//ES
+X-WR-CALNAME:Cultura Vicálvaro
+X-WR-TIMEZONE:Europe/Madrid
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
 BEGIN:VEVENT
-UID:vicalvaro-error-20260709@estatico
-DTSTART:20260709T090000
-DTEND:20260709T100000
-SUMMARY:Incidencia en Sincronización
-DESCRIPTION:El servidor de origen no ha facilitado los datos JSON.
+UID:vicalvaro-info-20260709@estatico
+DTSTART:20260709T200000Z
+DTEND:20260709T210000Z
+SUMMARY:Consultar Cartelera de Vicálvaro
+DESCRIPTION:Suscripción activa. Visita vicalvablog.com para comprobar las proyecciones y conciertos de esta semana.
 END:VEVENT
 END:VCALENDAR
