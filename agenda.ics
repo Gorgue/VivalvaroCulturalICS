@@ -1,0 +1,16 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Suscripcion Estatica Scraper//Agenda Vicalvaro//ES
+X-WR-CALNAME:Cultura Vicálvaro
+X-WR-TIMEZONE:Europe/Madrid
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:vicalvaro-alerta-20260709@estatico
+DTSTAMP:20260709T072548,886ZZ
+DTSTART:20260709T100000
+DTEND:20260709T110000
+SUMMARY:Revisar Agenda Vicálvaro Web
+DESCRIPTION:Calendario activo. Entra en vicalvablog.com para ver la cartelera actualizada.
+END:VEVENT
+END:VCALENDAR
