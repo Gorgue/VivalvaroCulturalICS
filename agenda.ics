@@ -1,15 +1,15 @@
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Suscripcion HTML Scraper//Agenda Vicalvaro//ES
+PRODID:-//Suscripcion Dinamica Pura//Agenda Vicalvaro//ES
 X-WR-CALNAME:Cultura Vicálvaro
 X-WR-TIMEZONE:Europe/Madrid
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT
-UID:vicalvaro-info-20260709@estatico
-DTSTART:20260709T200000Z
-DTEND:20260709T210000Z
-SUMMARY:Consultar Cartelera de Vicálvaro
-DESCRIPTION:Suscripción activa. Visita vicalvablog.com para comprobar las proyecciones y conciertos de esta semana.
+UID:vicalvaro-empty-20260709@estatico
+DTSTART:20260709T090000Z
+DTEND:20260709T100000Z
+SUMMARY:Suscripción Agenda Vicálvaro
+DESCRIPTION:Calendario sincronizado correctamente. Sin eventos planificados en el portal para el periodo actual.
 END:VEVENT
 END:VCALENDAR
