@@ -6,9 +6,9 @@ X-WR-TIMEZONE:Europe/Madrid
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT
-UID:vicalvaro-empty-20260902@estatico
-DTSTART:20260902T090000Z
-DTEND:20260902T100000Z
+UID:vicalvaro-empty-20260903@estatico
+DTSTART:20260903T090000Z
+DTEND:20260903T100000Z
 SUMMARY:Suscripción Agenda Vicálvaro
 DESCRIPTION:Calendario sincronizado correctamente. Sin eventos planificados en el portal para el periodo actual.
 END:VEVENT
